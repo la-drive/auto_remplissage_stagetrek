@@ -12,6 +12,22 @@ et une fenêtre demande le fichier .xlsx à utiliser.
 import sys
 import os
 import traceback
+from pathlib import Path
+
+# IMPORTANT : ceci doit être fait AVANT d'importer playwright.
+#
+# Quand ce script tourne depuis un exécutable "onefile" (PyInstaller), il
+# s'extrait à chaque lancement dans un dossier temporaire différent, qui est
+# supprimé à la fermeture du programme. Sans cette ligne, Playwright installe
+# le navigateur Chromium DANS ce dossier temporaire : soit il faudrait le
+# retélécharger (~150 Mo) à chaque lancement, soit -- ce qui arrivait ici --
+# un échec silencieux de téléchargement provoque une erreur "Executable
+# doesn't exist" au lancement du navigateur.
+#
+# On force donc un dossier permanent dans le profil de l'utilisateur, qui
+# survit d'un lancement à l'autre.
+_DOSSIER_NAVIGATEURS = str(Path.home() / ".cache" / "auto-voeux-stagetrek" / "playwright-browsers")
+os.environ["PLAYWRIGHT_BROWSERS_PATH"] = _DOSSIER_NAVIGATEURS
 
 import openpyxl
 from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
@@ -47,21 +63,29 @@ def ensure_browser_installed():
     """Télécharge le navigateur Chromium utilisé par Playwright s'il n'est pas déjà présent.
     Ne fait rien si c'est déjà fait (rapide au 2e lancement et suivants)."""
     print("Vérification du navigateur nécessaire (Chromium)...")
+    print("(Peut prendre plusieurs minutes la première fois : téléchargement d'environ 150 Mo.)")
     try:
         from playwright.__main__ import main as playwright_cli_main
     except Exception as e:
-        print(f"Impossible de préparer Playwright : {e}")
-        raise
+        raise RuntimeError(f"Impossible de préparer Playwright : {e}")
 
     old_argv = sys.argv
+    exit_code = 0
     try:
         sys.argv = ["playwright", "install", "chromium"]
         try:
             playwright_cli_main()
-        except SystemExit:
-            pass  # playwright_cli_main quitte volontairement une fois terminé, c'est normal
+        except SystemExit as e:
+            exit_code = e.code
     finally:
         sys.argv = old_argv
+
+    if exit_code not in (0, None):
+        raise RuntimeError(
+            f"L'installation du navigateur a échoué (code {exit_code}). "
+            "Vérifie ta connexion internet (le réseau du campus/eduroam bloque parfois "
+            "certains téléchargements) puis relance le programme."
+        )
     print("Navigateur prêt.")
 
 
