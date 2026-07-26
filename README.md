@@ -14,7 +14,7 @@
    navigateur nécessaire (~150 Mo, une seule fois). Patienter.
 5. Une fenêtre s'ouvre pour choisir le fichier récépissé `.xlsx`.
 6. Un navigateur Chrome s'ouvre sur stagetrek : se connecter, puis revenir
-   dans la fenêtre noire et appuyer sur Entrée pour lancer la saisie des voeux dans STAGETREK
+   dans la fenêtre noire et appuyer sur Entrée pour lancer la saisie automatique des voeux dans STAGETREK
 
 ### Mac
 1. Cliquez sur "v1.0.1" en dessous de "Releases" à droite de cette page.
@@ -31,4 +31,4 @@
    (~150 Mo, une seule fois au premier lancement).
 6. Une fenêtre s'ouvre pour choisir le fichier récépissé `.xlsx`.
 7. Un navigateur Chrome s'ouvre sur stagetrek : se connecter, puis revenir
-   dans le Terminal et appuyer sur Entrée pour lancer la saisie.
+   dans le Terminal et appuyer sur Entrée pour lancer la saisie automatique des voeux dans STAGETREK
