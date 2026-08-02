@@ -20,7 +20,12 @@ jobs:
             asset_name: AutoVoeuxStagetrek-Windows.exe
           - os: macos-latest
             artifact_name: AutoVoeuxStagetrek
-            asset_name: AutoVoeuxStagetrek-Mac
+            asset_name: AutoVoeuxStagetrek-Mac-AppleSilicon
+            zip_name: AutoVoeuxStagetrek-Mac-AppleSilicon.zip
+          - os: macos-13
+            artifact_name: AutoVoeuxStagetrek
+            asset_name: AutoVoeuxStagetrek-Mac-Intel
+            zip_name: AutoVoeuxStagetrek-Mac-Intel.zip
 
     runs-on: ${{ matrix.os }}
 
@@ -44,11 +49,8 @@ jobs:
           --collect-all playwright
           app.py
 
-      # Sur Mac, un exécutable "brut" ne s'ouvre pas forcément par simple double-clic
-      # depuis le Finder : on ajoute un petit lanceur .command qui, lui, s'ouvre
-      # normalement dans le Terminal en double-cliquant.
       - name: Création du lanceur .command (Mac uniquement)
-        if: matrix.os == 'macos-latest'
+        if: runner.os == 'macOS'
         run: |
           cd dist
           cat > "Lancer AutoVoeuxStagetrek.command" << 'EOF'
@@ -59,7 +61,7 @@ jobs:
           EOF
           chmod +x "Lancer AutoVoeuxStagetrek.command"
           chmod +x AutoVoeuxStagetrek
-          zip -r AutoVoeuxStagetrek-Mac.zip AutoVoeuxStagetrek "Lancer AutoVoeuxStagetrek.command"
+          zip -r ${{ matrix.zip_name }} AutoVoeuxStagetrek "Lancer AutoVoeuxStagetrek.command"
 
       - name: Upload de l'artefact (aperçu de build)
         uses: actions/upload-artifact@v4
