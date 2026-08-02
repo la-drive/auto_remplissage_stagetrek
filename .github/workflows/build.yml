@@ -20,12 +20,8 @@ jobs:
             asset_name: AutoVoeuxStagetrek-Windows.exe
           - os: macos-latest
             artifact_name: AutoVoeuxStagetrek
-            asset_name: AutoVoeuxStagetrek-Mac-AppleSilicon
-            zip_name: AutoVoeuxStagetrek-Mac-AppleSilicon.zip
-          - os: macos-13
-            artifact_name: AutoVoeuxStagetrek
-            asset_name: AutoVoeuxStagetrek-Mac-Intel
-            zip_name: AutoVoeuxStagetrek-Mac-Intel.zip
+            asset_name: AutoVoeuxStagetrek-Mac
+            zip_name: AutoVoeuxStagetrek-Mac.zip
 
     runs-on: ${{ matrix.os }}
 
@@ -43,7 +39,41 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Compilation avec PyInstaller
+      - name: Installation de Python Intel + dépendances (Mac uniquement)
+        if: runner.os == 'macOS'
+        run: |
+          # Installe une version Intel de Python via homebrew pour compiler
+          # les dépendances en x86_64
+          arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
+          /usr/local/bin/brew install python@3.11 || true
+          /usr/local/bin/python3.11 -m pip install --upgrade pip
+          /usr/local/bin/python3.11 -m pip install playwright openpyxl pyinstaller
+
+      - name: Compilation ARM (Apple Silicon)
+        if: runner.os == 'macOS'
+        run: >
+          pyinstaller --onefile --name AutoVoeuxStagetrek_arm64
+          --collect-all playwright
+          --target-arch arm64
+          app.py
+
+      - name: Compilation Intel x86_64
+        if: runner.os == 'macOS'
+        run: >
+          /usr/local/bin/python3.11 -m PyInstaller --onefile --name AutoVoeuxStagetrek_x86_64
+          --collect-all playwright
+          --target-arch x86_64
+          app.py
+
+      - name: Fusion en binaire universel (Mac)
+        if: runner.os == 'macOS'
+        run: |
+          lipo -create -output dist/AutoVoeuxStagetrek \
+            dist/AutoVoeuxStagetrek_arm64 \
+            dist/AutoVoeuxStagetrek_x86_64
+
+      - name: Compilation avec PyInstaller (Windows)
+        if: runner.os == 'Windows'
         run: >
           pyinstaller --onefile --name AutoVoeuxStagetrek
           --collect-all playwright
@@ -71,7 +101,7 @@ jobs:
             dist/${{ matrix.artifact_name }}
             dist/*.zip
 
-      - name: Publication sur la Release (uniquement si un tag v* a été poussé)
+      - name: Publication sur la Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
