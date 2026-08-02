@@ -3,10 +3,6 @@ app.py
 --------------
 Automatise la saisie des voeux de stage sur stagetrek.univ-tours.fr
 à partir d'un fichier .xlsx de récépissé (colonnes "Rang" / "Intitulé du Terrain").
-
-Version adaptée pour être compilée en exécutable autonome (.exe / .app) via
-PyInstaller + GitHub Actions : pas besoin d'installer Python, on double-clique
-et une fenêtre demande le fichier .xlsx à utiliser.
 """
 
 import sys
@@ -14,27 +10,17 @@ import os
 import traceback
 from pathlib import Path
 
-# IMPORTANT : ceci doit être fait AVANT d'importer playwright.
-#
-# Quand ce script tourne depuis un exécutable "onefile" (PyInstaller), il
-# s'extrait à chaque lancement dans un dossier temporaire différent, qui est
-# supprimé à la fermeture du programme. Sans cette ligne, Playwright installe
-# le navigateur Chromium DANS ce dossier temporaire : soit il faudrait le
-# retélécharger (~150 Mo) à chaque lancement, soit -- ce qui arrivait ici --
-# un échec silencieux de téléchargement provoque une erreur "Executable
-# doesn't exist" au lancement du navigateur.
-#
-# On force donc un dossier permanent dans le profil de l'utilisateur, qui
-# survit d'un lancement à l'autre.
+# IMPORTANT : doit être fait AVANT d'importer playwright.
+# Force le navigateur dans un dossier permanent (sinon il faudrait le
+# retélécharger à chaque lancement depuis un exécutable PyInstaller).
 _DOSSIER_NAVIGATEURS = str(Path.home() / ".cache" / "auto-voeux-stagetrek" / "playwright-browsers")
 os.environ["PLAYWRIGHT_BROWSERS_PATH"] = _DOSSIER_NAVIGATEURS
 
 import openpyxl
 from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 
-URL_PAGE = "https://stagetrek.univ-tours.fr/preferences/modifier/1212"  # adapte le numéro si besoin
+URL_PAGE = "https://stagetrek.univ-tours.fr/preferences/modifier/1212"
 
-# JS exécuté dans la page pour sélectionner l'option du <select> caché par bootstrap-select
 JS_SET_SELECT = """
 (args) => {
     const [selector, intitule] = args;
@@ -52,7 +38,6 @@ JS_SET_SELECT = """
 
 
 def pause_avant_fermeture(message="\nAppuie sur Entrée pour fermer cette fenêtre..."):
-    """Empêche la fenêtre de se fermer immédiatement quand le programme est lancé par double-clic."""
     try:
         input(message)
     except EOFError:
@@ -60,8 +45,6 @@ def pause_avant_fermeture(message="\nAppuie sur Entrée pour fermer cette fenêt
 
 
 def ensure_browser_installed():
-    """Télécharge le navigateur Chromium utilisé par Playwright s'il n'est pas déjà présent.
-    Ne fait rien si c'est déjà fait (rapide au 2e lancement et suivants)."""
     print("Vérification du navigateur nécessaire (Chromium)...")
     print("(Peut prendre plusieurs minutes la première fois : téléchargement d'environ 150 Mo.)")
     try:
@@ -83,15 +66,12 @@ def ensure_browser_installed():
     if exit_code not in (0, None):
         raise RuntimeError(
             f"L'installation du navigateur a échoué (code {exit_code}). "
-            "Vérifie ta connexion internet (le réseau du campus/eduroam bloque parfois "
-            "certains téléchargements) puis relance le programme."
+            "Vérifie ta connexion internet puis relance le programme."
         )
     print("Navigateur prêt.")
 
 
 def choisir_fichier_xlsx():
-    """Renvoie le chemin du fichier .xlsx à utiliser : argument en ligne de commande si fourni,
-    sinon ouvre une fenêtre de sélection de fichier."""
     if len(sys.argv) >= 2:
         return sys.argv[1]
 
@@ -121,7 +101,6 @@ def choisir_fichier_xlsx():
 
 
 def load_wishes(path):
-    """Lit le fichier récépissé .xlsx et renvoie une liste de tuples (rang, intitulé), triée par rang."""
     wb = openpyxl.load_workbook(path, data_only=True)
     ws = wb.active
 
@@ -145,15 +124,12 @@ def load_wishes(path):
 
 
 def add_one_wish(page, rang, intitule):
-    """Ouvre la pop-up 'Ajouter', renseigne le rang et le terrain, valide."""
-
     page.click("a.ajax-modal[data-event='event-ajouter-preference']")
 
     page.wait_for_selector("#rang", state="attached", timeout=20000)
     page.wait_for_selector("#terrainStage", state="attached", timeout=20000)
 
     page.fill("#rang", str(rang))
-
     page.evaluate(JS_SET_SELECT, ["#terrainStage", intitule])
 
     try:
