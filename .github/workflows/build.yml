@@ -22,7 +22,7 @@ jobs:
             artifact_name: AutoVoeuxStagetrek
             asset_name: AutoVoeuxStagetrek-Mac-AppleSilicon
             zip_name: AutoVoeuxStagetrek-Mac-AppleSilicon.zip
-          - os: macos-12
+          - os: macos-13-large
             artifact_name: AutoVoeuxStagetrek
             asset_name: AutoVoeuxStagetrek-Mac-Intel
             zip_name: AutoVoeuxStagetrek-Mac-Intel.zip
