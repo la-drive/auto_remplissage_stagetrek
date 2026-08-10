@@ -8,6 +8,7 @@ Automatise la saisie des voeux de stage sur stagetrek.univ-tours.fr
 import sys
 import os
 import traceback
+import re
 from pathlib import Path
 
 # IMPORTANT : doit être fait AVANT d'importer playwright.
@@ -108,33 +109,35 @@ def load_wishes(path):
 
 
 def add_one_wish(page, rang, intitule):
+    # Les timeout ont été passés de 20s à 3 minutes (180000 ms) pour pallier aux lenteurs du site
+    TIMEOUT_LENT = 180000 
+
     page.click("a.ajax-modal[data-event='event-ajouter-preference']")
 
-    page.wait_for_selector("#rang", state="attached", timeout=20000)
-    page.wait_for_selector("#terrainStage", state="attached", timeout=20000)
+    page.wait_for_selector("#rang", state="attached", timeout=TIMEOUT_LENT)
+    page.wait_for_selector("#terrainStage", state="attached", timeout=TIMEOUT_LENT)
 
     page.fill("#rang", str(rang))
     
-    # --- DEBUT DE LA CORRECTION ---
     # 1. Clique sur le bouton du menu déroulant (utilisation de data-id qui est fixe)
     page.click("button[data-id='terrainStage']")
     
     # 2. Cible le champ de recherche lié spécifiquement à ce select
     champ_recherche = page.locator("//div[contains(@class, 'bootstrap-select') and .//select[@id='terrainStage']]//input[@type='search']")
-    champ_recherche.wait_for(state="visible", timeout=5000)
+    champ_recherche.wait_for(state="visible", timeout=TIMEOUT_LENT)
     
     # 3. Écrit l'intitulé du voeu
     champ_recherche.fill(intitule)
     
-    # 4. Laisse un peu de temps à l'interface web pour filtrer la liste (très important)
-    page.wait_for_timeout(500)
+    # 4. Laisse un temps généreux à l'interface pour filtrer la liste si l'ordinateur/navigateur rame
+    page.wait_for_timeout(1000)
     
     # 5. Valide avec la touche Entrée
     champ_recherche.press("Enter")
-    # --- FIN DE LA CORRECTION ---
 
     try:
-        with page.expect_navigation(timeout=20000):
+        # Le rafraîchissement suite à la soumission peut être extrêmement lent
+        with page.expect_navigation(timeout=TIMEOUT_LENT):
             page.click("#submit")
     except PWTimeout:
         try:
@@ -143,11 +146,14 @@ def add_one_wish(page, rang, intitule):
             pop_up_encore_ouverte = False
         if pop_up_encore_ouverte:
             raise RuntimeError(
-                "La pop-up est restée ouverte après validation (vérifie s'il y a un message d'erreur)."
+                "Le site est anormalement lent ou une erreur a empêché la validation. "
+                "La pop-up est restée ouverte après 3 minutes d'attente."
             )
-
+            
+    # On attend que le bouton "Ajouter une préférence" de la page principale soit de nouveau "attaché"
+    # Cela garantit que la page a bien fini de recharger, sans bloquer sur des requêtes parasites en arrière-plan
     try:
-        page.wait_for_load_state("networkidle", timeout=20000)
+        page.wait_for_selector("a.ajax-modal[data-event='event-ajouter-preference']", state="attached", timeout=TIMEOUT_LENT)
     except PWTimeout:
         pass
 
@@ -159,7 +165,7 @@ def run():
 
     chemin_fichier = choisir_fichier_xlsx()
     wishes = load_wishes(chemin_fichier)
-    print(f"\n{len(wishes)} voeux à saisir, dans l'ordre du rang.")
+    print(f"\n{len(wishes)} vœux détectés dans le fichier Excel.")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, slow_mo=50)
@@ -172,10 +178,34 @@ def run():
             ">>> Une fois arrivé(e) sur la page 'Mes préférences' (celle avec le bouton 'Ajouter'),\n"
             ">>> reviens ici et appuie sur Entrée pour lancer la saisie automatique.\n"
         )
+        
+        # --- DÉTECTION DE REPRISE / VŒUX DÉJÀ SAISIS ---
+        nb_deja_saisis = 0
+        try:
+            compteur_loc = page.locator("//div[strong[contains(text(), 'Nombre de préférence')]]")
+            compteur_loc.wait_for(state="attached", timeout=5000)
+            texte_compteur = compteur_loc.inner_text()
+            
+            # Recherche "X / 300" avec une regex
+            match = re.search(r"(\d+)\s*/", texte_compteur)
+            if match:
+                nb_deja_saisis = int(match.group(1))
+                if nb_deja_saisis > 0:
+                    print(f"\n[Info Reprise] Le script a détecté que {nb_deja_saisis} vœux sont déjà enregistrés sur Stagetrek.")
+                    print("               Les vœux correspondants seront ignorés pour reprendre à la suite.")
+        except Exception:
+            # S'il ne trouve pas le texte, il assume qu'aucun voeu n'est saisi
+            pass
+        # ----------------------------------------------
 
         succes, echecs = 0, []
         for rang, intitule in wishes:
-            print(f"-> Ajout du voeu rang {rang} : {intitule}")
+            
+            if rang <= nb_deja_saisis:
+                print(f"-> Vœu de rang {rang} ignoré (déjà présent sur le site).")
+                continue
+                
+            print(f"-> Ajout du vœu de rang {rang} : {intitule}")
             try:
                 add_one_wish(page, rang, intitule)
                 succes += 1
@@ -188,18 +218,19 @@ def run():
                 except Exception:
                     pass
                 pause_avant_fermeture(
-                    "   -> Corrige manuellement ce vœu dans le navigateur si besoin,\n"
+                    "   -> L'attente maximale (3 minutes) a été dépassée ou une erreur imprévue est survenue.\n"
+                    "      Corrige manuellement ce vœu dans le navigateur si besoin,\n"
                     "      ferme la pop-up si elle est encore ouverte, puis appuie sur Entrée pour continuer..."
                 )
 
-        print(f"\nTerminé : {succes} vœux ajoutés automatiquement, {len(echecs)} à vérifier/corriger.")
+        print(f"\nTerminé : {succes} vœux ajoutés, {len(echecs)} à vérifier/corriger.")
         if echecs:
             print("Vœux en échec :")
             for rang, intitule in echecs:
                 print(f"  - rang {rang} : {intitule}")
 
         pause_avant_fermeture(
-            "\nAppuie sur Entrée pour fermer le navigateur (vérifie d'abord le classement final sur le site)."
+            "\nAppuie sur Entrée pour fermer le navigateur (vérifie d'abord ton classement final sur le site)."
         )
         browser.close()
 
