@@ -21,22 +21,6 @@ from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 
 URL_PAGE = "https://stagetrek.univ-tours.fr/preferences/modifier/1212"
 
-JS_SET_SELECT = """
-(args) => {
-    const [selector, intitule] = args;
-    const select = document.querySelector(selector);
-    if (!select) throw new Error("Select introuvable : " + selector);
-    const options = Array.from(select.options);
-    const match = options.find(o => o.textContent.trim() === intitule.trim());
-    if (!match) {
-        throw new Error("Terrain introuvable dans la liste : " + intitule);
-    }
-    select.value = match.value;
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-}
-"""
-
-
 def pause_avant_fermeture(message="\nAppuie sur Entrée pour fermer cette fenêtre..."):
     try:
         input(message)
@@ -130,7 +114,24 @@ def add_one_wish(page, rang, intitule):
     page.wait_for_selector("#terrainStage", state="attached", timeout=20000)
 
     page.fill("#rang", str(rang))
-    page.evaluate(JS_SET_SELECT, ["#terrainStage", intitule])
+    
+    # --- DEBUT DE LA CORRECTION ---
+    # 1. Clique sur le bouton du menu déroulant (utilisation de data-id qui est fixe)
+    page.click("button[data-id='terrainStage']")
+    
+    # 2. Cible le champ de recherche lié spécifiquement à ce select
+    champ_recherche = page.locator("//div[contains(@class, 'bootstrap-select') and .//select[@id='terrainStage']]//input[@type='search']")
+    champ_recherche.wait_for(state="visible", timeout=5000)
+    
+    # 3. Écrit l'intitulé du voeu
+    champ_recherche.fill(intitule)
+    
+    # 4. Laisse un peu de temps à l'interface web pour filtrer la liste (très important)
+    page.wait_for_timeout(500)
+    
+    # 5. Valide avec la touche Entrée
+    champ_recherche.press("Enter")
+    # --- FIN DE LA CORRECTION ---
 
     try:
         with page.expect_navigation(timeout=20000):
