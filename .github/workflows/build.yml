@@ -16,14 +16,11 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact_name: AutoVoeuxStagetrek.exe
-            asset_name: AutoVoeuxStagetrek-Windows.exe
+            asset_name: AutoVoeuxStagetrek-Windows
           - os: macos-latest
-            artifact_name: AutoVoeuxStagetrek
             asset_name: AutoVoeuxStagetrek-Mac-AppleSilicon
             zip_name: AutoVoeuxStagetrek-Mac-AppleSilicon.zip
           - os: macos-13-large
-            artifact_name: AutoVoeuxStagetrek
             asset_name: AutoVoeuxStagetrek-Mac-Intel
             zip_name: AutoVoeuxStagetrek-Mac-Intel.zip
 
@@ -44,31 +41,46 @@ jobs:
           pip install -r requirements.txt
 
       - name: Compilation avec PyInstaller
-        run: >
-          pyinstaller --onefile --name AutoVoeuxStagetrek
-          --collect-all playwright
-          app.py
+        run: |
+          pyinstaller --onefile --name AutoVoeuxStagetrek --collect-all playwright app.py
+          pyinstaller --onefile --name EffaceurVoeuxStagetrek --collect-all playwright effacer_voeux.py
 
-      - name: Création du lanceur .command (Mac uniquement)
+      - name: Création des lanceurs .command (Mac uniquement)
         if: runner.os == 'macOS'
         run: |
           cd dist
+          
+          # Lanceur pour le script d'ajout
           cat > "Lancer AutoVoeuxStagetrek.command" << 'CMDEOF'
           #!/bin/bash
           cd "$(dirname "$0")"
           chmod +x ./AutoVoeuxStagetrek
           ./AutoVoeuxStagetrek
           CMDEOF
+          
+          # Lanceur pour le script d'effacement
+          cat > "Lancer EffaceurVoeuxStagetrek.command" << 'CMDEOF'
+          #!/bin/bash
+          cd "$(dirname "$0")"
+          chmod +x ./EffaceurVoeuxStagetrek
+          ./EffaceurVoeuxStagetrek
+          CMDEOF
+          
+          # Rendre tous les fichiers exécutables
           chmod +x "Lancer AutoVoeuxStagetrek.command"
+          chmod +x "Lancer EffaceurVoeuxStagetrek.command"
           chmod +x AutoVoeuxStagetrek
-          zip -r ${{ matrix.zip_name }} AutoVoeuxStagetrek "Lancer AutoVoeuxStagetrek.command"
+          chmod +x EffaceurVoeuxStagetrek
+          
+          # Zipper les deux applications ensemble
+          zip -r ${{ matrix.zip_name }} AutoVoeuxStagetrek "Lancer AutoVoeuxStagetrek.command" EffaceurVoeuxStagetrek "Lancer EffaceurVoeuxStagetrek.command"
 
       - name: Upload de l'artefact (aperçu de build)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
           path: |
-            dist/${{ matrix.artifact_name }}
+            dist/*.exe
             dist/*.zip
 
       - name: Publication sur la Release
@@ -76,7 +88,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/${{ matrix.artifact_name }}
+            dist/*.exe
             dist/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
