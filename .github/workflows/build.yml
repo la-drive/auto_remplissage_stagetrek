@@ -44,6 +44,7 @@ jobs:
         run: |
           pyinstaller --onefile --name AutoVoeuxStagetrek --collect-all playwright app.py
           pyinstaller --onefile --name EffaceurVoeuxStagetrek --collect-all playwright effacer_voeux.py
+          pyinstaller --onefile --name RecupererVoeux --collect-all playwright recuperer_voeux.py
 
       - name: Création des lanceurs .command (Mac uniquement)
         if: runner.os == 'macOS'
@@ -65,15 +66,25 @@ jobs:
           chmod +x ./EffaceurVoeuxStagetrek
           ./EffaceurVoeuxStagetrek
           CMDEOF
+
+          # Lanceur pour le script de récupération
+          cat > "Lancer RecupererVoeux.command" << 'CMDEOF'
+          #!/bin/bash
+          cd "$(dirname "$0")"
+          chmod +x ./RecupererVoeux
+          ./RecupererVoeux
+          CMDEOF
           
           # Rendre tous les fichiers exécutables
           chmod +x "Lancer AutoVoeuxStagetrek.command"
           chmod +x "Lancer EffaceurVoeuxStagetrek.command"
+          chmod +x "Lancer RecupererVoeux.command"
           chmod +x AutoVoeuxStagetrek
           chmod +x EffaceurVoeuxStagetrek
+          chmod +x RecupererVoeux
           
-          # Zipper les deux applications ensemble
-          zip -r ${{ matrix.zip_name }} AutoVoeuxStagetrek "Lancer AutoVoeuxStagetrek.command" EffaceurVoeuxStagetrek "Lancer EffaceurVoeuxStagetrek.command"
+          # Zipper les trois applications ensemble
+          zip -r ${{ matrix.zip_name }} AutoVoeuxStagetrek "Lancer AutoVoeuxStagetrek.command" EffaceurVoeuxStagetrek "Lancer EffaceurVoeuxStagetrek.command" RecupererVoeux "Lancer RecupererVoeux.command"
 
       - name: Upload de l'artefact (aperçu de build)
         uses: actions/upload-artifact@v4
