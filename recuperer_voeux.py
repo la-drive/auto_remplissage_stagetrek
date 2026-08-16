@@ -3,7 +3,7 @@ recuperer_voeux.py
 ------------------
 Ouvre le classement de stages de l'étudiant sur stagetrek.univ-tours.fr,
 récupère le classement depuis la page /mon-stage/{id}#preferences,
-et remplit le modèle Excel modele_voeux_campagne_4-3.xlsx avec les rangs.
+et remplit le modèle Excel modele_voeux_campagne.xlsx avec les rangs.
 """
  
 import sys
@@ -72,7 +72,7 @@ def trouver_modele_excel():
     - même dossier que l'exécutable / script
     - dossier courant
     """
-    nom_fichier = "modele_voeux_campagne_4-3.xlsx"
+    nom_fichier = "modele_voeux_campagne.xlsx"
  
     # Dossier de l'exécutable (PyInstaller ou script)
     if getattr(sys, "frozen", False):
