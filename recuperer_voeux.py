@@ -3,7 +3,7 @@ recuperer_voeux.py
 ------------------
 Ouvre le classement de stages de l'étudiant sur stagetrek.univ-tours.fr,
 récupère le classement depuis la page /mon-stage/{id}#preferences,
-et remplit le modèle Excel modele_voeux_campagne_4-3.xlsx avec les rangs.
+et remplit le modèle Excel modele_voeux_campagne.xlsx avec les rangs.
 """
 
 import sys
@@ -71,7 +71,7 @@ def ensure_browser_installed():
 def choisir_modele_excel() -> Path:
     """
     Ouvre une boîte de dialogue pour que l'étudiant sélectionne
-    le fichier modele_voeux_campagne_4-3.xlsx.
+    le fichier modele_voeux_campagne.xlsx.
     Retourne le chemin sélectionné, ou lève SystemExit si annulé.
     """
     # Fenêtre Tk cachée (juste pour la boîte de dialogue)
@@ -80,7 +80,7 @@ def choisir_modele_excel() -> Path:
     root.attributes("-topmost", True)
 
     print("Une fenêtre de sélection de fichier va s'ouvrir...")
-    print("Sélectionne le fichier 'modele_voeux_campagne_4-3.xlsx'.\n")
+    print("Sélectionne le fichier 'modele_voeux_campagne.xlsx'.\n")
 
     chemin = filedialog.askopenfilename(
         title="Sélectionne le fichier modèle de vœux",
