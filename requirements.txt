@@ -1,3 +1,5 @@
 playwright
 openpyxl
 pyinstaller
+pandas
+beautifulsoup4
