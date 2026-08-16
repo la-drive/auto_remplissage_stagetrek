@@ -44,7 +44,13 @@ jobs:
         run: |
           pyinstaller --onefile --name AutoVoeuxStagetrek --collect-all playwright app.py
           pyinstaller --onefile --name EffaceurVoeuxStagetrek --collect-all playwright effacer_voeux.py
-          pyinstaller --onefile --name RecupererVoeux --collect-all playwright recuperer_voeux.py
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            pyinstaller --onefile --name RecupererVoeux --collect-all playwright \
+            --add-data "modele_voeux_campagne_4-3.xlsx;." recuperer_voeux.py
+          else
+            pyinstaller --onefile --name RecupererVoeux --collect-all playwright \
+            --add-data "modele_voeux_campagne_4-3.xlsx:." recuperer_voeux.py
+          fi
 
       - name: Création des lanceurs .command (Mac uniquement)
         if: runner.os == 'macOS'
