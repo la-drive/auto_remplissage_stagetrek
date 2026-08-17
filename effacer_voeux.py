@@ -46,7 +46,7 @@ def run():
     ensure_browser_installed()
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False, slow_mo=50)
+        browser = p.chromium.launch(headless=False, slow_mo=300000)
         context = browser.new_context()
         page = context.new_page()
         
@@ -80,21 +80,21 @@ def run():
             try:
                 # Cherche spécifiquement le bouton "Oui" avec l'ID confirmBtn dans la modale
                 modal_submit = page.locator(".modal.show #confirmBtn")
-                modal_submit.first.wait_for(state="visible", timeout=180000)
+                modal_submit.first.wait_for(state="visible", timeout=300000)
                 
                 # Clique pour valider la suppression
                 modal_submit.first.click()
                 
                 # On attend que la pop-up disparaisse de l'écran, signifiant que la suppression est envoyée
-                page.wait_for_selector(".modal.show", state="hidden", timeout=180000)
+                page.wait_for_selector(".modal.show", state="hidden", timeout=300000)
                 
                 # Petite pause pour laisser le tableau se mettre à jour en arrière-plan via AJAX
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(10000)
                 
             except PWTimeout:
                 # S'il n'y a pas de pop-up ou de rafraichissement clair, on attend simplement
                 print("   (Lenteur extrême détectée de la part du site, le script patiente...)")
-                page.wait_for_timeout(2000)
+                page.wait_for_timeout(20000)
             
             voeux_supprimes += 1
 
