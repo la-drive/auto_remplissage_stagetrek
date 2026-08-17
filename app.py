@@ -109,8 +109,8 @@ def load_wishes(path):
 
 
 def add_one_wish(page, rang, intitule):
-    # Les timeout ont été passés de 20s à 3 minutes (180000 ms) pour pallier aux lenteurs du site
-    TIMEOUT_LENT = 180000 
+    # Les timeout ont été passés de 20s à 5 minutes (300000 ms) pour pallier aux lenteurs du site
+    TIMEOUT_LENT = 300000 
 
     page.click("a.ajax-modal[data-event='event-ajouter-preference']")
 
@@ -168,7 +168,7 @@ def run():
     print(f"\n{len(wishes)} vœux détectés dans le fichier Excel.")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False, slow_mo=50)
+        browser = p.chromium.launch(headless=False, slow_mo=300000)
         context = browser.new_context()
         page = context.new_page()
         page.goto(URL_PAGE)
